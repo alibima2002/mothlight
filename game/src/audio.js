@@ -154,6 +154,41 @@ export function createAudio() {
       noise({ dur: 0.25, vol: 0.2, freq: 2400 });
       tone({ type: 'sine', from: 220, to: 90, dur: 0.25, vol: 0.18 });
     },
+    /** The boss descends: a low screech, falling and harsh. */
+    screech() {
+      if (!ensure()) return;
+      tone({ type: 'sawtooth', from: 880, to: 220, dur: 0.7, vol: 0.2 });
+      tone({ type: 'sawtooth', from: 1320, to: 330, dur: 0.7, vol: 0.1 });
+      noise({ dur: 0.5, vol: 0.12, freq: 500 });
+    },
+    /** A dash-through strike on the boss: a deep thud with a bright edge. */
+    bossHit() {
+      if (!ensure()) return;
+      tone({ type: 'sine', from: 140, to: 50, dur: 0.3, vol: 0.26 });
+      noise({ dur: 0.15, vol: 0.18, freq: 1800 });
+      tone({ type: 'triangle', from: 1046, to: 1568, dur: 0.2, vol: 0.1 });
+    },
+    /** The boss falls: a long descending call, then the dawn chord. */
+    bossDown() {
+      if (!ensure()) return;
+      [784, 659.25, 523.25, 392].forEach((freq, i) => {
+        tone({ type: 'triangle', from: freq, dur: 0.4, at: i * 0.14, vol: 0.16 });
+      });
+      [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+        tone({ type: 'triangle', from: freq, dur: 0.5, at: 0.6 + i * 0.12, vol: 0.14 });
+      });
+    },
+    /** An emberfly starts flashing: a quick rising blip, a warning. */
+    fuse() {
+      if (!ensure()) return;
+      tone({ type: 'sine', from: 880, to: 1760, dur: 0.18, vol: 0.12 });
+    },
+    /** An emberfly pops — dashed through, or burst: a soft orange thump. */
+    emberPop() {
+      if (!ensure()) return;
+      noise({ dur: 0.22, vol: 0.18, freq: 700 });
+      tone({ type: 'sine', from: 320, to: 90, dur: 0.22, vol: 0.16 });
+    },
     click() {
       if (!ensure()) return;
       tone({ type: 'sine', from: 660, to: 880, dur: 0.08, vol: 0.12 });

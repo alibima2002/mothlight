@@ -4,7 +4,7 @@
 [![rank](https://make.fun/badge/best-game-01/alibima2002/mothlight/rank.svg)](https://make.fun/bounty/best-game-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=best-game-01)
 [![reward](https://make.fun/badge/best-game-01/alibima2002/mothlight/reward.svg)](https://make.fun/bounty/best-game-01?utm_source=github&utm_medium=readme&utm_campaign=best-game-01)
 
-Mothlight — a night-garden arcade. Guide a luna moth through the dark garden, gather glowing pollen, chain combos, dash past the bats, and gather enough light to bring the dawn. Mouse or WASD to fly, Space or click to dash. Five waves, then dawn breaks. Moonpetals are worth fifty, dew drops grant a shield, and owls dive from above — watch the red shadow.
+Mothlight — a night-garden arcade. Guide a luna moth through the dark garden, gather glowing pollen, chain combos, dash past the bats, and gather enough light to bring the dawn. Mouse or WASD to fly, Space or click to dash. Five waves, then the Great Horned Owl guards the dawn — dash through it to win. Moonpetals are worth fifty and their light wounds the boss, dew drops grant a shield, owls dive from above — watch the red shadow — and emberflies drift close, flash, and burst: dash through them to pop them, or keep clear of the blast.
 
 ## Run it
 

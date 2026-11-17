@@ -10,10 +10,10 @@ export function createOwls(random) {
 
   return {
     owls,
-    update(dt, wave, mothX, mothY) {
+    update(dt, wave, mothX, mothY, spawning = true) {
       spawnTimer -= dt;
       const cap = WAVES.owlCap(wave);
-      if (WAVES.owls(wave) && spawnTimer <= 0 && owls.length < cap) {
+      if (WAVES.owls(wave) && spawning && spawnTimer <= 0 && owls.length < cap) {
         spawnTimer = WAVES.owlInterval(wave) * random.range(0.85, 1.25);
         owls.push({
           x: random.range(120, FIELD.width - 120),

@@ -9,10 +9,10 @@ export function createBats(random) {
 
   return {
     bats,
-    update(dt, wave, mothX, mothY) {
+    update(dt, wave, mothX, mothY, spawning = true) {
       spawnTimer -= dt;
       const cap = WAVES.batCap(wave);
-      if (spawnTimer <= 0 && bats.length < cap) {
+      if (spawning && spawnTimer <= 0 && bats.length < cap) {
         spawnTimer = WAVES.batInterval(wave) * random.range(0.75, 1.3);
         const fromLeft = random.chance(0.5);
         const speed = WAVES.batSpeed(wave) * random.range(0.9, 1.15);

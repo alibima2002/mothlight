@@ -3,7 +3,7 @@
 // through its screenshots, so the title, the play view and the end screens are
 // drawn to read at a glance: a clear goal, a live HUD, and a result with a
 // restart.
-import { COLORS, FIELD, GARDEN, MOTH } from './config.js';
+import { BOSS, COLORS, FIELD, GARDEN, MOTH } from './config.js';
 import { clamp, lerp } from './random.js';
 
 export const SCREEN_TITLE = 'title';
@@ -265,6 +265,161 @@ export function createRenderer(canvas) {
     ctx.restore();
   }
 
+  /** The boss: a great horned owl, twice the size of its kin, with a crown
+   * of horn tufts and eyes that burn red when enraged. While it warns, its
+   * strike shadow shows where the dive will land. */
+  function bossDraw(b, time) {
+    if (!b.active) return;
+    if (b.state === 'warn') {
+      const pulse = 0.5 + 0.5 * Math.sin(time * 10);
+      ctx.save();
+      ctx.globalAlpha = 0.3 + 0.3 * pulse;
+      ctx.fillStyle = '#ff5a4e';
+      ctx.beginPath();
+      ctx.arc(b.tx, b.ty, 74, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.7 + 0.3 * pulse;
+      ctx.strokeStyle = '#ff5a4e';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(b.tx, b.ty, 74, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    const flap = Math.sin(b.flap);
+    const enraged = b.hp <= 2;
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    if (b.state === 'down') ctx.rotate(0.5);
+    // Hit flash.
+    if (b.flash > 0) ctx.globalAlpha = 1 - b.flash * 0.4;
+    ctx.scale(b.vx >= 0 || b.state === 'warn' || b.state === 'hover' ? 1 : -1, 1);
+    // Menace glow.
+    const glow = ctx.createRadialGradient(0, 0, 10, 0, 0, 130);
+    glow.addColorStop(0, enraged ? 'rgba(255,90,78,0.35)' : 'rgba(183,140,255,0.28)');
+    glow.addColorStop(1, 'rgba(183,140,255,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, 130, 0, Math.PI * 2);
+    ctx.fill();
+    // Wings, wide and slow.
+    ctx.fillStyle = '#8d84b8';
+    const spread = 0.35 + flap * 0.22;
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.rotate(side * spread);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(side * 34, -42, side * 84, -18);
+      ctx.quadraticCurveTo(side * 52, 6, side * 28, 12);
+      ctx.quadraticCurveTo(side * 14, 20, 0, 10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    // Body.
+    ctx.fillStyle = '#b7aed6';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 26, 22, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Belly feathers.
+    ctx.strokeStyle = 'rgba(90,78,130,0.7)';
+    ctx.lineWidth = 2;
+    for (let i = -1; i <= 1; i += 1) {
+      ctx.beginPath();
+      ctx.arc(i * 10, 12, 7, 0.15 * Math.PI, 0.85 * Math.PI);
+      ctx.stroke();
+    }
+    // Head with horn tufts.
+    ctx.beginPath();
+    ctx.arc(24, -10, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(16, -18);
+    ctx.lineTo(18, -34);
+    ctx.lineTo(24, -20);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(28, -18);
+    ctx.lineTo(34, -32);
+    ctx.lineTo(34, -16);
+    ctx.closePath();
+    ctx.fill();
+    // Beak.
+    ctx.fillStyle = '#ffb347';
+    ctx.beginPath();
+    ctx.moveTo(30, -12);
+    ctx.lineTo(40, -7);
+    ctx.lineTo(30, -3);
+    ctx.closePath();
+    ctx.fill();
+    // Eyes: amber, burning red when enraged.
+    ctx.fillStyle = enraged ? '#ff3b2f' : '#ffb347';
+    ctx.beginPath();
+    ctx.arc(27, -11, 4.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1a1030';
+    ctx.beginPath();
+    ctx.arc(28, -11, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /** Feathers: dark, drifting, edged in pale violet so they read at a glance. */
+  function feather(f) {
+    ctx.save();
+    ctx.translate(f.x, f.y);
+    ctx.rotate(f.angle);
+    ctx.fillStyle = '#3a2f5e';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 5, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#b78cff';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(0, -10);
+    ctx.lineTo(0, 10);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /** Emberflies: a small orange glow, drifting; while one flashes, its core
+   * burns white and a ring grows to the blast's edge, so the burst never
+   * comes as a surprise. */
+  function emberfly(f, time) {
+    const flashing = f.state === 'flash';
+    const pulse = 0.6 + 0.4 * Math.sin(time * 6 + f.phase);
+    ctx.save();
+    const glow = ctx.createRadialGradient(f.x, f.y, 2, f.x, f.y, flashing ? 46 : 26);
+    glow.addColorStop(0, `rgba(255,154,61,${flashing ? 0.75 : 0.45 * pulse})`);
+    glow.addColorStop(1, 'rgba(255,154,61,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, flashing ? 46 : 26, 0, Math.PI * 2);
+    ctx.fill();
+    if (flashing) {
+      const t = 1 - f.timer / 0.6;
+      ctx.globalAlpha = 0.8;
+      ctx.strokeStyle = '#ff9a3d';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, 14 + t * 58, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    ctx.fillStyle = flashing ? '#fff3d6' : '#ffb347';
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, flashing ? 8 : 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ff7a1a';
+    ctx.beginPath();
+    ctx.arc(f.x - 3, f.y + 2, 3, 0, Math.PI * 2);
+    ctx.arc(f.x + 4, f.y - 2, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   function moth(m) {
     const flicker = m.invuln > 0 && Math.floor(m.invuln * 12) % 2 === 0;
     ctx.save();
@@ -404,18 +559,40 @@ export function createRenderer(canvas) {
       ctx.fillStyle = COLORS.gold;
       ctx.fillRect(28, 126, 110 * clamp(s.comboTimer / 2.6, 0, 1), 6);
     }
-    // Wave + pollen progress, top centre.
+    // Wave + pollen progress, top centre — or the boss's health, in the finale.
     ctx.textAlign = 'center';
-    ctx.fillStyle = COLORS.dim;
-    ctx.font = '600 12px system-ui, sans-serif';
-    ctx.fillText(`WAVE ${Math.min(s.wave, 5)} / 5`, FIELD.width / 2, 34);
-    ctx.fillStyle = 'rgba(238,242,255,0.18)';
-    ctx.fillRect(FIELD.width / 2 - 110, 44, 220, 8);
-    ctx.fillStyle = COLORS.cyan;
-    ctx.fillRect(FIELD.width / 2 - 110, 44, 220 * clamp(s.collected / s.quota, 0, 1), 8);
-    ctx.fillStyle = COLORS.dim;
-    ctx.font = '600 12px system-ui, sans-serif';
-    ctx.fillText(`POLLEN  ${s.collected} / ${s.quota}`, FIELD.width / 2, 70);
+    if (s.bossActive) {
+      ctx.fillStyle = COLORS.dim;
+      ctx.font = '600 12px system-ui, sans-serif';
+      ctx.fillText('FINAL BATTLE', FIELD.width / 2, 34);
+      ctx.fillStyle = '#ff5a4e';
+      ctx.font = '800 15px system-ui, sans-serif';
+      ctx.fillText('THE GREAT HORNED OWL', FIELD.width / 2, 56);
+      const bw = 220;
+      const bx = FIELD.width / 2 - bw / 2;
+      ctx.fillStyle = 'rgba(238,242,255,0.18)';
+      ctx.fillRect(bx, 64, bw, 9);
+      ctx.fillStyle = s.bossPhase === 3 ? '#ff3b2f' : '#ff5a4e';
+      ctx.fillRect(bx, 64, bw * clamp(s.bossHp / BOSS.maxHp, 0, 1), 9);
+      ctx.fillStyle = COLORS.dim;
+      ctx.font = '600 12px system-ui, sans-serif';
+      ctx.fillText(
+        s.bossPhase === 3 ? 'ENRAGED — DODGE EVERYTHING' : s.bossPhase === 2 ? 'PHASE 2 — FEATHER VOLLEYS' : 'PHASE 1 — DASH THROUGH IT TO STRIKE',
+        FIELD.width / 2,
+        92,
+      );
+    } else {
+      ctx.fillStyle = COLORS.dim;
+      ctx.font = '600 12px system-ui, sans-serif';
+      ctx.fillText(`WAVE ${Math.min(s.wave, 5)} / 5`, FIELD.width / 2, 34);
+      ctx.fillStyle = 'rgba(238,242,255,0.18)';
+      ctx.fillRect(FIELD.width / 2 - 110, 44, 220, 8);
+      ctx.fillStyle = COLORS.cyan;
+      ctx.fillRect(FIELD.width / 2 - 110, 44, 220 * clamp(s.collected / s.quota, 0, 1), 8);
+      ctx.fillStyle = COLORS.dim;
+      ctx.font = '600 12px system-ui, sans-serif';
+      ctx.fillText(`POLLEN  ${s.collected} / ${s.quota}`, FIELD.width / 2, 70);
+    }
     // Lives, top right — and a shield, when the moth carries one.
     ctx.textAlign = 'right';
     ctx.fillStyle = COLORS.dim;
@@ -429,8 +606,9 @@ export function createRenderer(canvas) {
       ctx.font = '700 13px system-ui, sans-serif';
       ctx.fillText('SHIELD READY', FIELD.width - 28, 88);
     }
-    // Wave modifier, under the wave bar: what this wave adds.
-    if (s.modifier) {
+    // Wave modifier, under the wave bar: what this wave adds. In the boss
+    // fight the phase line above takes this spot, so it stays quiet.
+    if (s.modifier && !s.bossActive) {
       ctx.textAlign = 'center';
       ctx.fillStyle = COLORS.gold;
       ctx.font = '700 12px system-ui, sans-serif';
@@ -509,13 +687,16 @@ export function createRenderer(canvas) {
     ctx.fillStyle = COLORS.gold;
     ctx.font = '600 15px system-ui, sans-serif';
     ctx.fillText('Moonpetals are worth fifty  •  Dew drops grant a shield  •  Owls dive — watch the red shadow', FIELD.width / 2, 428);
+    ctx.fillStyle = '#ff9a8a';
+    ctx.font = '700 15px system-ui, sans-serif';
+    ctx.fillText('Wave 6: the Great Horned Owl guards the dawn — dash through it to win', FIELD.width / 2, 452);
     ctx.fillStyle = COLORS.dim;
     ctx.font = '600 14px system-ui, sans-serif';
-    ctx.fillText('MOUSE or WASD to fly   •   SPACE / CLICK to dash   •   P pause   •   M mute', FIELD.width / 2, 452);
+    ctx.fillText('MOUSE or WASD to fly   •   SPACE / CLICK to dash   •   P pause   •   M mute', FIELD.width / 2, 478);
     if (best > 0) {
       ctx.fillStyle = COLORS.gold;
       ctx.font = '700 16px system-ui, sans-serif';
-      ctx.fillText(`BEST SCORE  ${best}`, FIELD.width / 2, 492);
+      ctx.fillText(`BEST SCORE  ${best}`, FIELD.width / 2, 510);
     }
     const pulse = 0.65 + 0.35 * Math.sin(world.state.time * 3);
     ctx.globalAlpha = pulse;
@@ -531,11 +712,11 @@ export function createRenderer(canvas) {
     panel(
       won ? 'DAWN BREAKS' : 'THE NIGHT CLAIMS THE MOTH',
       [
-        won ? 'Five waves of light gathered — the garden blooms again.' : 'The bats got the better of the little moth this time.',
+        won ? 'The Great Horned Owl is beaten — the garden blooms again.' : s.bossActive ? 'The Great Horned Owl still guards the dawn.' : 'The bats got the better of the little moth this time.',
         '',
         `SCORE   ${s.score}${isBest ? '  —  NEW BEST!' : ''}`,
         `BEST COMBO   ×${s.bestCombo}      WAVES CLEARED   ${won ? 5 : s.wave - 1}`,
-        `MOONPETALS   ${s.moonCollected}      SHIELDS   ${s.dewCollected}`,
+        `MOONPETALS   ${s.moonCollected}      SHIELDS   ${s.dewCollected}      BOSS HITS   ${s.bossHits}      EMBERFLIES   ${s.emberPopped}`,
         '',
         'Press R or click to fly again',
       ],
@@ -573,6 +754,9 @@ export function createRenderer(canvas) {
     dew(world.powerups, s.time);
     for (const b of world.bats.bats) bat(b);
     for (const o of world.owls.owls) owl(o, s.time);
+    for (const f of world.feathers.feathers) feather(f);
+    for (const e of world.emberflies.flies) emberfly(e, s.time);
+    bossDraw(world.boss.boss, s.time);
     moth(world.moth.moth);
     world.particles.draw(ctx);
     if (screen === SCREEN_PLAY || screen === SCREEN_PAUSED) hud(world, best);
@@ -585,6 +769,18 @@ export function createRenderer(canvas) {
     // Hit flash.
     if (s.flash > 0) {
       ctx.fillStyle = `rgba(255,60,60,${s.flash * 0.22})`;
+      ctx.fillRect(0, 0, FIELD.width, FIELD.height);
+    }
+    // Enraged boss: the edges of the night burn red.
+    if (s.bossActive && s.bossPhase === 3 && screen === SCREEN_PLAY) {
+      const pulse = 0.1 + 0.06 * Math.sin(s.time * 4);
+      const g = ctx.createRadialGradient(
+        FIELD.width / 2, FIELD.height / 2, FIELD.height * 0.42,
+        FIELD.width / 2, FIELD.height / 2, FIELD.height * 0.75,
+      );
+      g.addColorStop(0, 'rgba(255,40,30,0)');
+      g.addColorStop(1, `rgba(255,40,30,${pulse})`);
+      ctx.fillStyle = g;
       ctx.fillRect(0, 0, FIELD.width, FIELD.height);
     }
     ctx.restore();

@@ -8,7 +8,7 @@
 // window.__shotReady for a screenshot.
 import { BEST_KEY, FIELD, STEP } from './config.js';
 import { createRandom } from './random.js';
-import { createWorld, EVENT_BLOCK, EVENT_COLLECT, EVENT_DASH, EVENT_HIT, EVENT_MOON, EVENT_OVER, EVENT_SHIELD, EVENT_WAVE, EVENT_WIN } from './world.js';
+import { createWorld, EVENT_BLOCK, EVENT_BOSS, EVENT_BOSS_DOWN, EVENT_BOSS_HIT, EVENT_COLLECT, EVENT_DASH, EVENT_EMBER, EVENT_FUSE, EVENT_HIT, EVENT_MOON, EVENT_OVER, EVENT_SHIELD, EVENT_WAVE, EVENT_WIN } from './world.js';
 import { createInput } from './input.js';
 import { createAudio } from './audio.js';
 import { createRenderer, SCREEN_OVER, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE, SCREEN_WIN } from './render.js';
@@ -82,6 +82,11 @@ function playEvents(events) {
   if (events & EVENT_BLOCK) audio.block();
   if (events & EVENT_DASH) audio.dash();
   if (events & EVENT_HIT) audio.hit();
+  if (events & EVENT_BOSS) audio.screech();
+  if (events & EVENT_BOSS_HIT) audio.bossHit();
+  if (events & EVENT_BOSS_DOWN) audio.bossDown();
+  if (events & EVENT_FUSE) audio.fuse();
+  if (events & EVENT_EMBER) audio.emberPop();
   if (events & EVENT_WAVE) {
     audio.wave();
     announce(`Wave ${s.wave}: ${s.collected} of ${s.quota} pollen gathered.`);
