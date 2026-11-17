@@ -1,0 +1,68 @@
+// Mothlight — tuning constants. One place for every number the game balances on,
+// so a tweak never means hunting through the simulation or the renderer.
+export const FIELD = { width: 1280, height: 720 };
+export const STEP = 1 / 60;
+export const BEST_KEY = 'mothlight.best';
+
+/** The moth. */
+export const MOTH = {
+  radius: 15,
+  speed: 340,
+  dashSpeed: 920,
+  dashTime: 0.32,
+  dashCooldown: 2.4,
+  dashInvuln: 0.6,
+  hitInvuln: 2.0,
+  lives: 3,
+};
+
+/** Pollen motes and the wave quota. */
+export const POLLEN = {
+  radius: 7,
+  basePoints: 10,
+  comboWindow: 2.6,
+  comboStep: 5,
+  maxCombo: 8,
+  life: 8,
+  fallSpeed: 26,
+  sway: 34,
+};
+
+/** Waves: five waves, then dawn breaks and the game is won. */
+export const WAVES = {
+  total: 5,
+  quota: (wave) => 10 + wave * 4,
+  batInterval: (wave) => Math.max(2.0, 4.6 - wave * 0.65),
+  batSpeed: (wave) => 120 + wave * 26,
+  batCap: (wave) => 2 + wave,
+  waveBonus: (wave) => 100 * wave,
+};
+
+/** Bats. */
+export const BAT = { radius: 19, life: 14, wobble: 46 };
+
+/** The garden bed along the bottom of the field. */
+export const GARDEN = { top: 600, flowerCount: 9 };
+
+/** Palette: one night, warm light against it. */
+export const COLORS = {
+  skyTop: '#070a1e',
+  skyMid: '#131a3d',
+  skyBottom: '#241a4d',
+  hillFar: '#1a1440',
+  hillNear: '#120d33',
+  ground: '#0c0824',
+  moon: '#ffe9b0',
+  gold: '#ffd76a',
+  cyan: '#7ef0e0',
+  pink: '#ff9ad5',
+  violet: '#b78cff',
+  leaf: '#2f7d5b',
+  mothBody: '#f4f1de',
+  mothWing: '#cfe8b8',
+  bat: '#0a0618',
+  batEye: '#ff5a4e',
+  danger: '#ff5a4e',
+  ink: '#eef2ff',
+  dim: '#9aa3c7',
+};
