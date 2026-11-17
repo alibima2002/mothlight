@@ -47,9 +47,9 @@ export function createRenderer(canvas) {
 
   function sky(dawn) {
     const g = ctx.createLinearGradient(0, 0, 0, FIELD.height);
-    g.addColorStop(0, mix(COLORS.skyTop, '#3a5a8c', dawn * 0.85));
-    g.addColorStop(0.55, mix(COLORS.skyMid, '#7d94c4', dawn * 0.85));
-    g.addColorStop(1, mix(COLORS.skyBottom, '#e8b98a', dawn * 0.85));
+    g.addColorStop(0, mix(COLORS.skyTop, '#4a6aa8', dawn * 0.85));
+    g.addColorStop(0.55, mix(COLORS.skyMid, '#9db4d8', dawn * 0.85));
+    g.addColorStop(1, mix(COLORS.skyBottom, '#f2c184', dawn * 0.85));
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, FIELD.width, FIELD.height);
   }
@@ -171,7 +171,97 @@ export function createRenderer(canvas) {
       ctx.beginPath();
       ctx.arc(mote.x - 2, mote.y - 2, mote.r * 0.35, 0, Math.PI * 2);
       ctx.fill();
+      // A moonpetal wears a gold ring, so the rare one reads at a glance.
+      if (mote.kind === 'moon') {
+        ctx.globalAlpha = a * 0.9;
+        ctx.strokeStyle = '#ffe9b0';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(mote.x, mote.y, mote.r + 6, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
+    ctx.restore();
+  }
+
+  /** Dew drops: cyan droplets with a sparkle, falling from the night. */
+  function dew(powerups, time) {
+    ctx.save();
+    for (const drop of powerups.drops) {
+      const tw = 0.6 + 0.4 * Math.sin(time * 5 + drop.phase);
+      const glow = ctx.createRadialGradient(drop.x, drop.y, 2, drop.x, drop.y, 30);
+      glow.addColorStop(0, `rgba(126,240,224,${0.5 * tw})`);
+      glow.addColorStop(1, 'rgba(126,240,224,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(drop.x, drop.y, 30, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#7ef0e0';
+      ctx.beginPath();
+      ctx.moveTo(drop.x, drop.y - drop.r);
+      ctx.quadraticCurveTo(drop.x + drop.r * 0.9, drop.y + 2, drop.x, drop.y + drop.r);
+      ctx.quadraticCurveTo(drop.x - drop.r * 0.9, drop.y + 2, drop.x, drop.y - drop.r);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(drop.x - 3, drop.y - 3, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /** Owls: a pale hunter, wide-winged; while it warns, its strike shadow shows. */
+  function owl(o, time) {
+    if (o.state === 'warn') {
+      const pulse = 0.5 + 0.5 * Math.sin(time * 10);
+      ctx.save();
+      ctx.globalAlpha = 0.25 + 0.25 * pulse;
+      ctx.fillStyle = '#ff5a4e';
+      ctx.beginPath();
+      ctx.arc(o.tx, o.ty, 34, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.6 + 0.3 * pulse;
+      ctx.strokeStyle = '#ff5a4e';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(o.tx, o.ty, 34, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    const flap = Math.sin(o.flap);
+    ctx.save();
+    ctx.translate(o.x, o.y);
+    ctx.scale(o.vx >= 0 || o.state === 'warn' ? 1 : -1, 1);
+    ctx.fillStyle = '#d8d2e8';
+    const spread = 0.4 + flap * 0.35;
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.rotate(side * spread);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(side * 18, -20, side * 42, -8);
+      ctx.quadraticCurveTo(side * 26, 4, side * 14, 6);
+      ctx.quadraticCurveTo(side * 7, 10, 0, 5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 12, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(11, -4, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(7, -8);
+    ctx.lineTo(9, -16);
+    ctx.lineTo(13, -8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#ffb347';
+    ctx.beginPath();
+    ctx.arc(12, -4, 2.2, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
 
@@ -326,13 +416,25 @@ export function createRenderer(canvas) {
     ctx.fillStyle = COLORS.dim;
     ctx.font = '600 12px system-ui, sans-serif';
     ctx.fillText(`POLLEN  ${s.collected} / ${s.quota}`, FIELD.width / 2, 70);
-    // Lives, top right.
+    // Lives, top right — and a shield, when the moth carries one.
     ctx.textAlign = 'right';
     ctx.fillStyle = COLORS.dim;
     ctx.font = '600 12px system-ui, sans-serif';
     ctx.fillText('LIVES', FIELD.width - 28, 34);
     for (let i = 0; i < 3; i += 1) {
       mothIcon(FIELD.width - 44 - i * 34, 58, 1, i < s.lives ? 1 : 0.22);
+    }
+    if (s.shield) {
+      ctx.fillStyle = COLORS.cyan;
+      ctx.font = '700 13px system-ui, sans-serif';
+      ctx.fillText('SHIELD READY', FIELD.width - 28, 88);
+    }
+    // Wave modifier, under the wave bar: what this wave adds.
+    if (s.modifier) {
+      ctx.textAlign = 'center';
+      ctx.fillStyle = COLORS.gold;
+      ctx.font = '700 12px system-ui, sans-serif';
+      ctx.fillText(s.modifier, FIELD.width / 2, 92);
     }
     // Dash cooldown, bottom left.
     const ready = world.moth.moth.dashCooldown <= 0;
@@ -367,10 +469,10 @@ export function createRenderer(canvas) {
     ctx.restore();
   }
 
-  function panel(title, lines, accent) {
+  function panel(title, lines, accent, veil = 'rgba(7,10,30,0.72)') {
     ctx.save();
     ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(7,10,30,0.72)';
+    ctx.fillStyle = veil;
     ctx.fillRect(0, 0, FIELD.width, FIELD.height);
     ctx.fillStyle = accent;
     ctx.font = '800 58px Georgia, serif';
@@ -404,6 +506,9 @@ export function createRenderer(canvas) {
     ctx.fillText('Guide the luna moth through the dark garden.', FIELD.width / 2, 340);
     ctx.fillText('Gather glowing pollen, chain combos, dash past the bats —', FIELD.width / 2, 368);
     ctx.fillText('and gather enough light to bring the dawn.', FIELD.width / 2, 396);
+    ctx.fillStyle = COLORS.gold;
+    ctx.font = '600 15px system-ui, sans-serif';
+    ctx.fillText('Moonpetals are worth fifty  •  Dew drops grant a shield  •  Owls dive — watch the red shadow', FIELD.width / 2, 428);
     ctx.fillStyle = COLORS.dim;
     ctx.font = '600 14px system-ui, sans-serif';
     ctx.fillText('MOUSE or WASD to fly   •   SPACE / CLICK to dash   •   P pause   •   M mute', FIELD.width / 2, 452);
@@ -430,10 +535,14 @@ export function createRenderer(canvas) {
         '',
         `SCORE   ${s.score}${isBest ? '  —  NEW BEST!' : ''}`,
         `BEST COMBO   ×${s.bestCombo}      WAVES CLEARED   ${won ? 5 : s.wave - 1}`,
+        `MOONPETALS   ${s.moonCollected}      SHIELDS   ${s.dewCollected}`,
         '',
         'Press R or click to fly again',
       ],
       won ? COLORS.gold : COLORS.pink,
+      // A win lets the dawn through: a warm, light veil instead of the
+      // night's dark one, so the shot reads as morning, not midnight.
+      won ? 'rgba(74,52,28,0.5)' : undefined,
     );
   }
 
@@ -461,7 +570,9 @@ export function createRenderer(canvas) {
     ctx.fillRect(0, GARDEN.top, FIELD.width, FIELD.height - GARDEN.top);
     flowers(world.garden, s.time);
     pollen(world.garden);
+    dew(world.powerups, s.time);
     for (const b of world.bats.bats) bat(b);
+    for (const o of world.owls.owls) owl(o, s.time);
     moth(world.moth.moth);
     world.particles.draw(ctx);
     if (screen === SCREEN_PLAY || screen === SCREEN_PAUSED) hud(world, best);

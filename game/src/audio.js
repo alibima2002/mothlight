@@ -134,6 +134,26 @@ export function createAudio() {
         tone({ type: 'triangle', from: freq, dur: 0.5, at: i * 0.12, vol: 0.16 });
       });
     },
+    /** A moonpetal: a bright rising chime, worth its fifty points. */
+    moon() {
+      if (!ensure()) return;
+      [1046.5, 1318.5, 1568].forEach((freq, i) => {
+        tone({ type: 'sine', from: freq, to: freq * 1.2, dur: 0.22, at: i * 0.05, vol: 0.18 });
+      });
+    },
+    /** A dew shield, gathered: a warm low chord. */
+    shield() {
+      if (!ensure()) return;
+      [392, 493.88].forEach((freq, i) => {
+        tone({ type: 'triangle', from: freq, dur: 0.3, at: i * 0.06, vol: 0.15 });
+      });
+    },
+    /** A shield shattering on a hit: glass noise and a low thud. */
+    block() {
+      if (!ensure()) return;
+      noise({ dur: 0.25, vol: 0.2, freq: 2400 });
+      tone({ type: 'sine', from: 220, to: 90, dur: 0.25, vol: 0.18 });
+    },
     click() {
       if (!ensure()) return;
       tone({ type: 'sine', from: 660, to: 880, dur: 0.08, vol: 0.12 });

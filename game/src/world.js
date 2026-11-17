@@ -2,9 +2,11 @@
 // (title, playing, paused, over, won) lives in main.js; this module only knows
 // the garden, the moth, the bats and the score, and reports what happened as an
 // event bitmask so main.js can play sounds and change screens.
-import { FIELD, MOTH, POLLEN, WAVES } from './config.js';
+import { FIELD, MOONPETAL, MOTH, POLLEN, WAVES } from './config.js';
 import { createGarden } from './garden.js';
 import { createBats } from './bats.js';
+import { createOwls } from './owls.js';
+import { createPowerups } from './powerups.js';
 import { createMoth } from './moth.js';
 import { createParticles } from './particles.js';
 
@@ -15,12 +17,17 @@ export const EVENT_HIT = 4;
 export const EVENT_WAVE = 8;
 export const EVENT_WIN = 16;
 export const EVENT_OVER = 32;
+export const EVENT_MOON = 64;
+export const EVENT_SHIELD = 128;
+export const EVENT_BLOCK = 256;
 
 export function createWorld(random) {
   const garden = createGarden(random);
   const bats = createBats(random);
+  const owls = createOwls(random);
+  const powerups = createPowerups(random);
   const moth = createMoth();
-  const particles = createParticles();
+  const particles = createParticles(random);
 
   const state = {
     time: 0,
@@ -31,6 +38,10 @@ export function createWorld(random) {
     comboTimer: 0,
     bestCombo: 0,
     lives: MOTH.lives,
+    shield: false,
+    modifier: '',
+    moonCollected: 0,
+    dewCollected: 0,
     collected: 0,
     quota: WAVES.quota(1),
     shake: 0,
@@ -53,6 +64,10 @@ export function createWorld(random) {
     state.comboTimer = 0;
     state.bestCombo = 0;
     state.lives = MOTH.lives;
+    state.shield = false;
+    state.modifier = '';
+    state.moonCollected = 0;
+    state.dewCollected = 0;
     state.collected = 0;
     state.quota = WAVES.quota(1);
     state.shake = 0;
@@ -62,8 +77,44 @@ export function createWorld(random) {
     state.dawn = 0;
     garden.reset();
     bats.reset();
+    owls.reset();
+    powerups.reset();
     moth.reset();
     particles.clear();
+  }
+
+  /** One hit from a bat or an owl. A shield takes it instead of a life. */
+  function takeHit(fromX, fromY) {
+    if (state.shield) {
+      state.shield = false;
+      state.shake = 0.6;
+      moth.moth.invuln = MOTH.hitInvuln;
+      particles.ring(moth.moth.x, moth.moth.y, '#7ef0e0', 110, 0.7);
+      particles.burst(moth.moth.x, moth.moth.y, {
+        count: 26,
+        color: '#7ef0e0',
+        speed: 280,
+        life: 0.8,
+      });
+      particles.text(moth.moth.x, moth.moth.y - 20, 'SHIELD!', '#7ef0e0');
+      return EVENT_BLOCK;
+    }
+    state.lives -= 1;
+    state.chain = 0;
+    state.combo = 0;
+    state.comboTimer = 0;
+    state.shake = 1;
+    state.flash = 1;
+    moth.moth.invuln = MOTH.hitInvuln;
+    moth.moth.vx = (moth.moth.x < FIELD.width / 2 ? -1 : 1) * 320;
+    moth.moth.vy = -260;
+    particles.burst(moth.moth.x, moth.moth.y, {
+      count: 22,
+      color: '#ff5a4e',
+      speed: 260,
+      life: 0.8,
+    });
+    return state.lives <= 0 ? EVENT_HIT | EVENT_OVER : EVENT_HIT;
   }
 
   /**
@@ -94,8 +145,10 @@ export function createWorld(random) {
 
     garden.update(dt, state.wave);
     bats.update(dt, state.wave, moth.moth.x, moth.moth.y);
+    owls.update(dt, state.wave, moth.moth.x, moth.moth.y);
+    powerups.update(dt, state.wave, garden.flowers);
 
-    // Gather pollen.
+    // Gather pollen. A moonpetal is worth five times a mote, and rings.
     const pollen = garden.pollen;
     for (let i = pollen.length - 1; i >= 0; i -= 1) {
       const mote = pollen[i];
@@ -105,39 +158,71 @@ export function createWorld(random) {
         state.combo = comboMultiplier();
         state.bestCombo = Math.max(state.bestCombo, state.combo);
         state.comboTimer = POLLEN.comboWindow;
-        const points = POLLEN.basePoints * state.combo;
+        const moon = mote.kind === 'moon';
+        const points = (moon ? MOONPETAL.basePoints : POLLEN.basePoints) * state.combo;
         state.score += points;
         state.collected += 1;
-        particles.burst(mote.x, mote.y, { count: 12, color: mote.color, speed: 150 });
+        particles.burst(mote.x, mote.y, {
+          count: moon ? 26 : 12,
+          color: mote.color,
+          speed: moon ? 260 : 150,
+        });
         particles.text(mote.x, mote.y - 14, `+${points}`, mote.color);
+        if (moon) {
+          state.moonCollected += 1;
+          particles.ring(mote.x, mote.y, '#ffe9b0', 100, 0.7);
+          events |= EVENT_MOON;
+        }
         events |= EVENT_COLLECT;
       }
     }
 
-    // Bats: one hit costs a life and breaks the chain.
+    // Dew shields: gather one and the moth carries a shield for the next hit.
+    // A shield already carried turns the drop into points instead.
+    const drops = powerups.drops;
+    for (let i = drops.length - 1; i >= 0; i -= 1) {
+      const drop = drops[i];
+      if (moth.touches(drop.x, drop.y, drop.r)) {
+        powerups.take(i);
+        if (state.shield) {
+          const points = 25 * state.combo || 25;
+          state.score += points;
+          particles.text(drop.x, drop.y - 14, `+${points}`, '#7ef0e0');
+          events |= EVENT_COLLECT;
+        } else {
+          state.shield = true;
+          state.dewCollected += 1;
+          particles.ring(moth.moth.x, moth.moth.y, '#7ef0e0', 100, 0.7);
+          particles.burst(moth.moth.x, moth.moth.y, {
+            count: 20,
+            color: '#7ef0e0',
+            speed: 220,
+            life: 0.8,
+          });
+          particles.text(moth.moth.x, moth.moth.y - 20, 'SHIELD!', '#7ef0e0');
+          events |= EVENT_SHIELD;
+        }
+      }
+    }
+
+    // Bats and owls: one hit costs a life and breaks the chain — or a shield.
     if (!moth.isInvulnerable()) {
       for (let i = bats.bats.length - 1; i >= 0; i -= 1) {
         const bat = bats.bats[i];
         if (moth.touches(bat.x, bat.y, bat.r - 2)) {
           bats.bats.splice(i, 1);
-          state.lives -= 1;
-          state.chain = 0;
-          state.combo = 0;
-          state.comboTimer = 0;
-          state.shake = 1;
-          state.flash = 1;
-          moth.moth.invuln = MOTH.hitInvuln;
-          moth.moth.vx = (moth.moth.x < FIELD.width / 2 ? -1 : 1) * 320;
-          moth.moth.vy = -260;
-          particles.burst(moth.moth.x, moth.moth.y, {
-            count: 22,
-            color: '#ff5a4e',
-            speed: 260,
-            life: 0.8,
-          });
-          events |= EVENT_HIT;
-          if (state.lives <= 0) events |= EVENT_OVER;
+          events |= takeHit(bat.x, bat.y);
           break;
+        }
+      }
+      if (!(events & EVENT_OVER)) {
+        for (let i = owls.owls.length - 1; i >= 0; i -= 1) {
+          const owl = owls.owls[i];
+          if (moth.touches(owl.x, owl.y, owl.r - 2)) {
+            owls.owls.splice(i, 1);
+            events |= takeHit(owl.x, owl.y);
+            break;
+          }
         }
       }
     }
@@ -153,7 +238,8 @@ export function createWorld(random) {
         state.wave += 1;
         state.collected = 0;
         state.quota = WAVES.quota(state.wave);
-        state.banner = `Wave ${state.wave} — the garden glows brighter`;
+        state.banner = WAVES.banner(state.wave);
+        state.modifier = WAVES.modifier(state.wave);
         state.bannerTimer = 2.6;
         particles.burst(moth.moth.x, moth.moth.y, {
           count: 30,
@@ -171,5 +257,5 @@ export function createWorld(random) {
     return events;
   }
 
-  return { state, garden, bats, moth, particles, reset, step };
+  return { state, garden, bats, owls, powerups, moth, particles, reset, step };
 }

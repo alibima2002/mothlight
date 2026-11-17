@@ -8,7 +8,7 @@
 // window.__shotReady for a screenshot.
 import { BEST_KEY, FIELD, STEP } from './config.js';
 import { createRandom } from './random.js';
-import { createWorld, EVENT_COLLECT, EVENT_DASH, EVENT_HIT, EVENT_OVER, EVENT_WAVE, EVENT_WIN } from './world.js';
+import { createWorld, EVENT_BLOCK, EVENT_COLLECT, EVENT_DASH, EVENT_HIT, EVENT_MOON, EVENT_OVER, EVENT_SHIELD, EVENT_WAVE, EVENT_WIN } from './world.js';
 import { createInput } from './input.js';
 import { createAudio } from './audio.js';
 import { createRenderer, SCREEN_OVER, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE, SCREEN_WIN } from './render.js';
@@ -77,6 +77,9 @@ function steerTarget(snapshot) {
 function playEvents(events) {
   const s = world.state;
   if (events & EVENT_COLLECT) audio.collect(s.combo);
+  if (events & EVENT_MOON) audio.moon();
+  if (events & EVENT_SHIELD) audio.shield();
+  if (events & EVENT_BLOCK) audio.block();
   if (events & EVENT_DASH) audio.dash();
   if (events & EVENT_HIT) audio.hit();
   if (events & EVENT_WAVE) {
@@ -112,10 +115,13 @@ function frame(time) {
   }
 
   if (screen === SCREEN_TITLE) {
-    // A living backdrop: the garden blooms behind the title.
+    // A living backdrop: the garden blooms behind the title, and the moth
+    // drifts low over the flowers, clear of the words.
     world.garden.update(dt, 1);
     world.particles.update(dt);
     world.moth.moth.wing += dt * 16;
+    world.moth.moth.x = FIELD.width / 2 + Math.sin(world.state.time * 0.7) * 130;
+    world.moth.moth.y = 590 + Math.sin(world.state.time * 1.3) * 10;
     world.state.time += dt;
     if (snapshot.confirm) startGame();
   } else if (screen === SCREEN_PLAY) {

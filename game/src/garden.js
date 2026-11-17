@@ -2,7 +2,7 @@
 // night-blooming flowers that release pollen, and the pollen motes themselves.
 // Flowers are both scenery and the game's economy: each open bloom lets go of
 // a glowing mote on its own rhythm, and the moth gathers them.
-import { COLORS, FIELD, GARDEN, POLLEN } from './config.js';
+import { COLORS, FIELD, GARDEN, MOONPETAL, POLLEN, WAVES } from './config.js';
 import { clamp } from './random.js';
 
 const FLOWER_COLORS = [COLORS.gold, COLORS.cyan, COLORS.pink, COLORS.violet];
@@ -44,20 +44,25 @@ export function createGarden(random) {
   const pollen = [];
   let ambientTimer = 1.5;
 
-  function spawnMote(x, y, color, rise = true) {
+  function spawnMote(x, y, color, rise = true, kind = 'pollen') {
+    const moon = kind === 'moon';
     pollen.push({
       x,
       y,
       vx: random.range(-14, 14),
       vy: -POLLEN.fallSpeed * random.range(0.7, 1.2),
-      r: POLLEN.radius,
+      r: moon ? MOONPETAL.radius : POLLEN.radius,
       color,
       age: 0,
-      life: POLLEN.life,
+      life: moon ? MOONPETAL.life : POLLEN.life,
       swayPhase: random.range(0, Math.PI * 2),
       rise,
+      kind,
     });
   }
+
+  // A moonpetal blooms from a random flower, rarely, once the garden warms up.
+  let moonTimer = MOONPETAL.interval * 0.6;
 
   return {
     stars,
@@ -81,12 +86,23 @@ export function createGarden(random) {
         // Ambient motes drift down from the night sky; bloom motes float up.
         spawnMote(random.range(60, FIELD.width - 60), -12, random.pick(FLOWER_COLORS), false);
       }
+      // Moonpetals: one fat golden mote at a time, from wave 2 on.
+      if (WAVES.moonpetals(wave)) {
+        moonTimer -= dt;
+        const hasMoon = pollen.some((mote) => mote.kind === 'moon');
+        if (moonTimer <= 0 && !hasMoon) {
+          moonTimer = MOONPETAL.interval * random.range(0.85, 1.2);
+          const flower = random.pick(flowers);
+          spawnMote(flower.x, flower.y - flower.stem - 8, '#ffe9b0', true, 'moon');
+        }
+      }
       for (let i = pollen.length - 1; i >= 0; i -= 1) {
         const mote = pollen[i];
         mote.age += dt;
         mote.swayPhase += dt * 2.2;
+        const fall = mote.kind === 'moon' ? MOONPETAL.fallSpeed : POLLEN.fallSpeed;
         mote.x += (mote.vx + Math.sin(mote.swayPhase) * POLLEN.sway * 0.4) * dt;
-        mote.y += (mote.rise ? -1 : 1) * POLLEN.fallSpeed * 0.55 * dt;
+        mote.y += (mote.rise ? -1 : 1) * fall * 0.55 * dt;
         mote.y += Math.sin(mote.swayPhase * 0.5) * 6 * dt;
         if (mote.age >= mote.life || mote.y < -20 || mote.y > FIELD.height + 20) {
           pollen.splice(i, 1);
@@ -100,6 +116,7 @@ export function createGarden(random) {
     reset() {
       pollen.length = 0;
       ambientTimer = 1.5;
+      moonTimer = MOONPETAL.interval * 0.6;
       for (const flower of flowers) flower.timer = random.range(0.4, 2.2);
     },
   };
